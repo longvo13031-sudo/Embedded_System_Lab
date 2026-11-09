@@ -1,3 +1,4 @@
+
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/sys/printk.h>
@@ -10,7 +11,7 @@
 #endif
 
 static const struct gpio_dt_spec led3 =
-    GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+    GPIO_DT_SPEC_GET(LED_NODE, gpios);
 
 static const struct gpio_dt_spec y0 =
     GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
@@ -19,7 +20,18 @@ static atomic_t led_state = ATOMIC_INIT(0);
 
 void thread_led_blinky(void *p1, void *p2, void *p3)
 {
-    gpio_pin_configure_dt(&led3, GPIO_OUTPUT_INACTIVE);
+    int ret;
+
+    if (!gpio_is_ready_dt(&led3)) {
+        printk("LED3 GPIO controller is not ready\n");
+        return;
+    }
+
+    ret = gpio_pin_configure_dt(&led3, GPIO_OUTPUT_INACTIVE);
+    if (ret < 0) {
+        printk("Failed to configure LED3: %d\n", ret);
+        return;
+    }
 
     while (1) {
         gpio_pin_set_dt(&led3, 1);
@@ -34,10 +46,20 @@ void thread_led_blinky(void *p1, void *p2, void *p3)
 
 void thread_y0_follow(void *p1, void *p2, void *p3)
 {
+    int ret;
     int last_state = -1;
     int current_state;
 
-    gpio_pin_configure_dt(&y0, GPIO_OUTPUT_INACTIVE);
+    if (!gpio_is_ready_dt(&y0)) {
+        printk("Y0 GPIO controller is not ready\n");
+        return;
+    }
+
+    ret = gpio_pin_configure_dt(&y0, GPIO_OUTPUT_INACTIVE);
+    if (ret < 0) {
+        printk("Failed to configure Y0: %d\n", ret);
+        return;
+    }
 
     while (1) {
         current_state = atomic_get(&led_state);
@@ -63,28 +85,7 @@ K_THREAD_DEFINE(thread_y0_follow_id, 1024,
 
 int main(void)
 {
-    int ret;
-
-    if (!gpio_is_ready_dt(&led)) {
-        printk("LED GPIO controller is not ready\n");
-        return 0;
-    }
-
-    ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE);
-    if (ret < 0) {
-        printk("Failed to configure LED: %d\n", ret);
-        return 0;
-    }
-
-    printk("Zephyr STM32F4 Discovery: toggling LED on PE4\n");
-
-    while (1) {
-        ret = gpio_pin_toggle_dt(&led);
-        if (ret < 0) {
-            printk("Failed to toggle LED: %d\n", ret);
-        }
-        k_msleep(500);
-    }
+    printk("Exercise 2: LED3 blinks, Y0 follows LED3\n");
 
     return 0;
 }
