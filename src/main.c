@@ -9,6 +9,34 @@
 #endif
 
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED_NODE, gpios);
+void thread_led_blinky(void *p1, void *p2, void *p3)
+{
+    int ret;
+
+    if (!gpio_is_ready_dt(&led)) {
+        printk("LED GPIO is not ready\n");
+        return;
+    }
+
+    ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE);
+    if (ret < 0) {
+        printk("Failed to configure LED\n");
+        return;
+    }
+
+    while (1) {
+        gpio_pin_set_dt(&led, 1);
+        k_msleep(1000);
+
+        gpio_pin_set_dt(&led, 0);
+        k_msleep(2000);
+    }
+}
+
+K_THREAD_DEFINE(thread_led_blinky_id, 1024,
+                thread_led_blinky,
+                NULL, NULL, NULL,
+                7, 0, 0);
 
 int main(void)
 {
